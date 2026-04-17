@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics.pairwise import cosine_similarity
 
-# ── Page Config ──────────────────────────────────────────────
+
 st.set_page_config(
     page_title="Customer Insights Dashboard",
     page_icon="🛍️",
