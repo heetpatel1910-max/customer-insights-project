@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics.pairwise import cosine_similarity
@@ -11,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ── Load Data ─────────────────────────────────────────────────
+#Load Data and keep them in the memory ─────────────────────────────────────────────────
 @st.cache_data
 def load_data():
     rfm = pd.read_csv('outputs/rfm_final.csv')
@@ -20,7 +21,7 @@ def load_data():
 
 rfm, basket_binary = load_data()
 
-# ── Recommendation Function ───────────────────────────────────
+#Measures how similar two customers are based on their purchase history. ───────────────────────────────────
 @st.cache_data
 def compute_similarity(basket):
     sim = cosine_similarity(basket)
@@ -28,6 +29,7 @@ def compute_similarity(basket):
 
 customer_similarity_df = compute_similarity(basket_binary)
 
+#
 def get_recommendations(customer_id, n=5):
     customer_id = int(customer_id)
     if customer_id not in customer_similarity_df.index:
@@ -88,12 +90,42 @@ if page == "📊 Overview":
 
     with col2:
         st.subheader("👥 Customers by Segment")
+        counts = rfm['Segment'].value_counts()
         fig, ax = plt.subplots(figsize=(6, 4))
-        rfm['Segment'].value_counts().plot(
-            kind='pie', ax=ax, autopct='%1.1f%%',
-            colors=colors, startangle=90
+        wedges, _, autotexts = ax.pie(
+            counts,
+            labels=None,
+            autopct='%1.1f%%',
+            colors=colors,
+            startangle=90,
+            pctdistance=1.25,
+            radius=0.75,
         )
-        ax.set_ylabel("")
+        for t in autotexts:
+            t.set_fontsize(9)
+            t.set_fontweight('bold')
+
+        # Nudge labels that are too close together
+        positions = [np.array(t.get_position()) for t in autotexts]
+        for i in range(len(positions)):
+            for j in range(i + 1, len(positions)):
+                diff = positions[i] - positions[j]
+                dist = np.linalg.norm(diff)
+                if dist < 0.25:
+                    direction = diff / (dist + 1e-9)
+                    shift = (0.25 - dist) / 2 + 0.06
+                    positions[i] += direction * shift
+                    positions[j] -= direction * shift
+                    autotexts[i].set_position(tuple(positions[i]))
+                    autotexts[j].set_position(tuple(positions[j]))
+
+        ax.legend(
+            wedges, counts.index,
+            loc='lower center',
+            bbox_to_anchor=(0.5, -0.12),
+            ncol=2,
+            frameon=False
+        )
         ax.set_title("Customer Distribution")
         plt.tight_layout()
         st.pyplot(fig)
